@@ -1,0 +1,84 @@
+---
+title: "Ejemplo de arbol de clasificación con R"
+author: "[Javier Cara](https://javiercara.github.io/)"
+output: 
+  html_document:
+    toc: true 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4) 
+```
+
+
+En este ejemplo vamos a analizar los datos de 150 lirios utilizando árboles de clasificación. Estos datos los podemos encontrar en el paquete *datasets* de R. Para más información podemos teclear *help("iris")* en la consola. Entre otras cosas se obtiene:
+
+**Description**
+
+*This famous (Fisher's or Anderson's) iris data set gives the measurements in centimeters of the variables sepal length and width and petal length and width, respectively, for 50 flowers from each of 3 species of iris. The species are Iris setosa, versicolor, and virginica.*
+
+Podemos encontrar más información en https://en.wikipedia.org/wiki/Iris_flower_data_set, como por ejemplo fotos de Iris setosa, versicolor, y virginica.
+
+Para ver el contenido del dataset:
+
+```{r}
+str(iris)
+```
+
+```{r}
+plot(iris$Petal.Width, iris$Sepal.Width, pch = 19, col = as.numeric(iris$Species)+1, xlab = "Petal.Width", ylab = "Sepal.Width")
+legend(0.9,4.5,legend=c("setosa","versicolor","virginica"), col=c("blue","red","green"), pch=19)
+```
+
+Vamos a dividir aleatoriamente los datos en training set/validation set:
+```{r}
+set.seed(1) # utilizamos una semilla para que los resultados sean reproducibles
+ndat = nrow(iris)
+train = sample(1:ndat, ndat/2, replace = F) # la mitad de los datos para entranamiento
+datos_t = iris[train,] # trainning set
+datos_v = iris[-train,] # validation set
+```
+
+Estimamos (o entrenamos) un arbol de clasificación con los datos de entrenamiento:
+
+```{r}
+library(tree)
+t1 <- tree(Species ~ Sepal.Width + Petal.Width, data = datos_t)
+summary(t1)
+```
+
+Dibujamos el árbol:
+
+```{r}
+plot(t1)
+text(t1,cex=0.8)
+```
+
+Como sólo tenemos dos regresores, podemos visualizar las particiones que propone el árbol estimado de la siguiente forma:
+
+```{r}
+plot(datos_t$Petal.Width, datos_t$Sepal.Width, pch = 19, col = as.numeric(datos_t$Species)+1, xlab = "Petal.Width", ylab = "Sepal.Width" )
+partition.tree(t1, label = "Species", add = TRUE, ordvars = c("Petal.Width","Sepal.Width"))
+legend(0.9,4.5,legend=unique(iris$Species),col=unique(as.numeric(iris$Species)+1),pch=19)
+```
+
+En el primer gráfico se observa que, por ejemplo, la partición (Petal.Width < 1.45) da la misma predicción en las dos hojas resultantes. Esto puede parecer contradictorio, pero el algoritmo propone esta partición porque los datos resultantes con esa partición son más homogéneos (como se observa en la segunda figura).
+
+Calculamos el error del modelo
+
+```{r}
+yt_p = predict(t1, datos_t, type="class") # para arboles de clasificiacion hay que poner type = "class"
+# creamos una tabla
+table(yt_p, datos_t$Species)
+```
+
+La tabla nos indica que se han predicho correctamente (26 + 27 + 20) = `r (26 + 27 + 20) `, y que hay 2 datos que no se predicen bien (como se observa en el grafico anterior). Esto coincide con la salida que se obtuvo con summary(t1) => Misclassification error rate: 0.02667 = 2 / 75.
+
+Ahora vamos a calcular el error cometido en el validation test:
+```{r}
+yv_p = predict(t1, datos_v, type="class")
+# creamos una tabla
+table(yv_p, datos_v$Species)
+```
+
+Los resultados empeoran un poco: valores bien predichos (24 + 21 + 26) = `r (24 + 21 + 26)`, y datos que no se predicen bien (3 + 1) = 4, lo que daría un Misclassification error rate: 4 / 75 = `r 4/75`.

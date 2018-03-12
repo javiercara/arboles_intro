@@ -1,0 +1,208 @@
+---
+title: "Bagging y Random Forest para clasificación"
+author: "[Javier Cara](https://javiercara.github.io/)"
+output: 
+  html_document:
+    toc: true 
+---
+
+## Descripción
+
+El archivo “winequality.csv” contiene datos que relacionan la calidad de 4898 y 1599 diferentes tipos de vino blanco y rojo (respectivamente), con un total de 11 parámetros químicos medidos en dichos vinos. El archivo “winequality-names.txt” contiene más información de los datos. Se pide:
+
+a) Comentar si hay diferencias en las variables medidas según sea el vino blanco o rojo.
+
+b) Dividir los datos en dos partes iguales: una parte para entrenar el modelo y otra parte para comprobar la calidad de la predicción (utilizar como semilla en numero 123).
+
+c) Calcular el error cometido cuando se analiza la calidad del vino (variable quality) en función de las otras variables utilizando:
+    i. Un sólo árbol.
+    ii. Bagging.
+    iii. Random forest.
+
+## a) Solución
+
+```{r}
+datos = read.csv("winequality.csv",header=T,sep=";")
+# comprobamos que el tipo de vino (white-red) es de tipo factor
+is.factor(datos$tipo)
+```
+
+Como ejemplo, vamos a ver si hay diferencias en el contenido en alcohol según sea el vino rojo o blanco:
+
+```{r}
+library(tree)
+t1 = tree(alcohol ~ tipo, data = datos)
+print(t1)
+```
+
+El árbol sólo tiene un nodo, no se ha conseguido dividir los datos en función del tipo de vino. Luego los vinos rojos y blancos no tienen diferente contenido en alcohol.
+
+## b) Solución
+
+```{r}
+set.seed(123)
+ndat = nrow(datos)
+train = sample(1:ndat,ndat/2) # la mitad de los datos para entranamiento
+datos_t = datos[train,] # trainning set
+datos_v = datos[-train,] # validation set
+```
+
+## c) Solución
+
+### c.i) solución
+
+```{r}
+t2 = tree(quality ~ ., data = datos_t)
+```
+
+```{r}
+# dibujamos el arbol
+plot(t2)
+text(t2,pretty=0,cex=0.8)
+```
+
+Como vemos, no estamos haciendo bien el ejercicio ya que estamos prediciendo puntuaciones como 6.083, 5.713, ..., cuando deberían ser números enteros entre 1 y 10. En realidad, *quality* es una variable qualitativa de tipo ordinal. Completamos nuestros datos con la variable *qualityF*, que es de tipo factor.
+
+```{r}
+datos = data.frame(datos, qualityF = as.factor(datos$quality)) 
+datos_t = datos[train,] # trainning set
+datos_v = datos[-train,] # validation set
+```
+
+Volvemos a estimar el árbol, pero esta vez consideramos *qualityF* como variable respuesta
+
+```{r}
+t3 = tree(qualityF ~ .-quality, data = datos_t) # quitamos quality, no puede ser variable explicativa ya que tiene la misma informacion que qualityF
+```
+
+```{r}
+# dibujamos el arbol
+plot(t3)
+text(t3,pretty=0,cex=0.8)
+summary(t3)
+```
+
+Ahora la predicción tiene mejor pinta, ya que predice valores enteros. Sin embargo, la predicción es muy pobre, ya que solo predice calidades 5 y 6. Vamos a ver el error que hemos cometido:
+
+```{r}
+# error del modelo
+yt_p = predict(t3,newdata = datos_t, type="class")
+yt = datos_t$qualityF
+# creamos una tabla
+mt = table(yt_p, yt)
+mt
+```
+
+Hay 528 vinos de calidad 5 y 1142 vinos de calidad 6 corréctamente predichos. El resto, (3248 - 528 - 1142) = `r 3248 - 528 - 1142` , están mal predichos. La proporción de fallos (error cometido) es 1578/3248 = `r 1578/3248`.
+
+```{r}
+# error cometido
+eti = (nrow(datos_t) - sum(diag(mt)))/nrow(datos_t)
+eti
+```
+
+Vamos a ver el error cometido con los datos de validación:
+
+```{r}
+# error de prediccion
+yv_p = predict(t3,newdata = datos_v, type="class")
+yv = datos_v$qualityF
+# creamos una tabla
+mv = table(yv_p, yv)
+mv
+```
+
+```{r}
+# Error cometido
+evi = (nrow(datos_v) - sum(diag(mv)))/nrow(datos_v)
+evi
+```
+
+### c.ii) solución
+
+```{r}
+library(randomForest)
+bag1 = randomForest(qualityF ~ . - quality, data = datos_t, mtry=12, ntree = 500)
+```
+
+```{r}
+# error del modelo
+yt_p = predict(bag1,newdata = datos_t, type="class")
+mt = table(yt_p, yt)
+mt
+```
+
+```{r}
+# error cometido
+etii = (nrow(datos_t) - sum(diag(mt)))/nrow(datos_t)
+etii
+```
+
+
+```{r}
+# error de prediccion
+yv_p = predict(bag1,newdata = datos_v, type="class")
+yv = datos_v$qualityF
+# creamos una tabla
+mv = table(yv_p, yv)
+mv
+```
+
+```{r}
+# error cometido
+evii = (nrow(datos_v) - sum(diag(mv)))/nrow(datos_v)
+evii
+```
+
+### c.iii) solución
+
+```{r}
+rf1 = randomForest(qualityF ~ . - quality, data = datos_t, mtry=5, ntree = 500)
+```
+
+```{r}
+# error del modelo
+yt_p = predict(rf1,newdata = datos_t, type="class")
+mt = table(yt_p, yt)
+mt
+```
+
+```{r}
+# error cometido
+etiii = (nrow(datos_t) - sum(diag(mt)))/nrow(datos_t)
+etiii
+```
+
+
+```{r}
+# error de prediccion
+yv_p = predict(rf1,newdata = datos_v, type="class")
+yv = datos_v$qualityF
+# creamos una tabla
+mv = table(yv_p, yv)
+mv
+```
+
+```{r}
+# error cometido
+eviii = (nrow(datos_v) - sum(diag(mv)))/nrow(datos_v)
+eviii
+```
+
+### Conclusiones
+
+```{r}
+res = matrix(c(eti,evi,etii,evii,etiii,eviii), byrow = T, ncol = 2)
+colnames(res) = c("Training", "Validation")
+rownames(res) = c("Tree", "Bagging", "RandomForest")
+```
+
+Los errores cometidos con los distintos métodos son:
+
+```{r}
+print(round(res*100,digits = 2))
+```
+
+
+
+

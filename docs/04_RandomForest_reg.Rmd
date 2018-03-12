@@ -1,0 +1,144 @@
+---
+title: "Bagging y Random Forest para regresión"
+author: "[Javier Cara](https://javiercara.github.io/)"
+output: 
+  html_document:
+    toc: true 
+---
+
+## Lectura de datos
+
+```{r cars}
+library(tree)
+datos = read.table('coches.txt',header=T)
+```
+
+## Training set *vs* Validation set
+
+Dividimos los datos en dos partes, una para entrenar el modelo y otra para calcular el error de predicción con datos diferentes de los utilizados para entrenar:
+
+```{r}
+set.seed(321)
+ndat = nrow(datos)
+train = sample(1:ndat,ndat/2) # la mitad de los datos para entranamiento
+datos_t = datos[train,] # trainning set
+datos_v = datos[-train,] # validation set
+```
+
+Entrenamiento del modelo
+
+```{r}
+t1 <- tree(consumo ~ ., data = datos_t)
+plot(t1)
+text(t1)
+```
+
+Error del modelo
+
+```{r}
+yp_t_t1 <- predict(t1, newdata = datos_t)
+```
+
+
+```{r}
+y_t = datos_t$consumo
+plot(y_t,yp_t_t1)
+abline(0,1) # como pintamos y vs yp, la relacion perfecta deberia ser una recta a 45º (m=1)
+( MSE_t_t1 = mean((y_t-yp_t_t1)^2) ) # error cuadratico medio en los datos de training
+```
+
+```{r}
+# prediccion del consumo con los datos de validacion
+yp_v_t1 = predict(t1, newdata = datos_v)
+
+# error del validation set
+y_v = datos_v$consumo
+(MSE_v_t1 = mean((y_v-yp_v_t1)^2))
+```
+
+## Random Forest
+
+### mtree = 3
+
+```{r}
+library(randomForest)
+# numero total de regresores: 7
+rf1 = randomForest(consumo ~ ., data = datos_t, mtry=3, ntree = 500)
+```
+
+Error del modelo:
+
+```{r}
+yp_t_rf1 <- predict(rf1, newdata = datos_t)
+( MSE_t_rf1 = mean((y_t-yp_t_rf1)^2) ) # error cuadratico medio en los datos de training
+```
+
+Error de predicción:
+
+```{r}
+# prediccion del consumo con los datos de validacion
+yp_v_rf1 = predict(rf1, newdata = datos_v)
+
+# error del validation set
+(MSE_v_rf1 = mean((y_v-yp_v_rf1)^2))
+```
+
+### Ahora utilizamos mtry = 5
+
+```{r}
+rf2 = randomForest(consumo ~ ., data = datos_t, mtry=5, ntree = 500)
+```
+
+Error del modelo:
+
+```{r}
+yp_t_rf2 <- predict(rf2, newdata = datos_t)
+( MSE_t_rf2 = mean((y_t-yp_t_rf2)^2) ) # error cuadratico medio en los datos de training
+```
+
+Error de predicción:
+
+```{r}
+# prediccion del consumo con los datos de validacion
+yp_v_rf2 = predict(rf2, newdata = datos_v)
+
+# error del validation set
+(MSE_v_rf2 = mean((y_v-yp_v_rf2)^2))
+```
+
+## Bagging
+
+Cuando se utilizan todos los árboles en la reestimación de los modelos se llama bagging:
+
+```{r}
+library(randomForest)
+nreg = ncol(datos)-1
+bag1 = randomForest(consumo ~ ., data = datos_t, mtry=nreg, ntree = 500)
+```
+
+Error del modelo:
+
+```{r}
+yp_t_bag1 <- predict(bag1, newdata = datos_t)
+( MSE_t_bag1 = mean((y_t-yp_t_bag1)^2) ) # error cuadratico medio en los datos de training
+```
+
+Error de predicción:
+
+```{r}
+# prediccion del consumo con los datos de validacion
+yp_v_bag1 = predict(bag1, newdata = datos_v)
+
+# error del validation set
+(MSE_v_bag1 = mean((y_v-yp_v_bag1)^2))
+```
+
+Random forest funciona mejor que bagging cuando los regresores están correlacionados, ya que utilizar diferentes regresores en cada partición de-correlaciona regresores.
+
+## Conclusiones
+
+```{r}
+res = data.frame(training = c(MSE_t_t1, MSE_t_rf1, MSE_t_rf2, MSE_t_bag1), validation = c(MSE_v_t1, MSE_v_rf1, MSE_v_rf2, MSE_v_bag1))
+rownames(res) = c("Tree", "RF1", "RF2", "Bag")
+print(res)
+```

@@ -1,0 +1,16 @@
+---
+title: "Introducción a los Arboles de Regresión y Clasificación"
+author: "[Javier Cara](https://javiercara.github.io/)"
+date: "marzo de 2018"
+output: html_document
+---
+
+<br>
+
+Indice:
+
+1. [Introducción a los árboles de decisión](01_intro.html)
+2. [Árboles de regresión](02_tree_reg.html)
+3. [Árboles de clasificación](03_tree_clas.html)
+4. [Bagging y Random Forest para regresión](04_RandomForest_reg.html)
+5. [Bagging y Random Forest para clasificación](05_RandomForest_clas.html)
