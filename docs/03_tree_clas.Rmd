@@ -27,7 +27,7 @@ str(iris)
 
 ```{r}
 plot(iris$Petal.Width, iris$Sepal.Width, pch = 19, col = as.numeric(iris$Species)+1, xlab = "Petal.Width", ylab = "Sepal.Width")
-legend(0.9,4.5,legend=c("setosa","versicolor","virginica"), col=c("blue","red","green"), pch=19)
+legend(0.9,4.5,legend=unique(iris$Species),col=unique(as.numeric(iris$Species)+1),pch=19)
 ```
 
 Vamos a dividir aleatoriamente los datos en training set/validation set:
